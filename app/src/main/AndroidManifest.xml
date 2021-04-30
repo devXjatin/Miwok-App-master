@@ -10,16 +10,42 @@
         android:theme="@style/AppTheme">
         <activity
             android:label="@string/category_phrases"
-            android:name=".PhrasesActivity"/>
+            android:name=".PhrasesActivity"
+            android:parentActivityName=".MainActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".MainActivity"/>
+
+        </activity>
         <activity
             android:label="Colors"
-            android:name=".ColorsAcitivity" />
+            android:name=".ColorsAcitivity"
+            android:parentActivityName=".MainActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".MainActivity"/>
+
+        </activity>
+
         <activity
             android:label="Family Members"
-            android:name=".FamilyMembersActivity" />
+            android:name=".FamilyMembersActivity"
+            android:parentActivityName=".MainActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".MainActivity"/>
+
+        </activity>
+
         <activity
             android:label="Numbers"
-            android:name=".NumbersActivity" />
+            android:name=".NumbersActivity"
+            android:parentActivityName=".MainActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".MainActivity"/>
+
+        </activity>
         <activity android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
