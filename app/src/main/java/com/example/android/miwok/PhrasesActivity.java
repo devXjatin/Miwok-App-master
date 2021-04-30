@@ -1,5 +1,7 @@
 package com.example.android.miwok;
 
+import android.content.Context;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -18,10 +20,34 @@ public class PhrasesActivity extends AppCompatActivity {
         }
     };
 
+    private AudioManager audioManager;
+
+    //it is used to chane focus
+    AudioManager.OnAudioFocusChangeListener audioFocusChangeListener = new
+            AudioManager.OnAudioFocusChangeListener(){
+                @Override
+                public void onAudioFocusChange(int focusChange) {
+                    if(focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT || focusChange ==
+                            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK){
+                        //pause playback
+                        mediaPlayer.pause();
+                        mediaPlayer.seekTo(0);
+                    }
+                    else if(focusChange == AudioManager.AUDIOFOCUS_GAIN){
+                        //resume playback
+                        mediaPlayer.start();
+                    }
+                    else if(focusChange == AudioManager.AUDIOFOCUS_LOSS){
+                        releaseMediaPlayer();
+                    }
+                }
+            };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_numbers);
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
 
         //Custom ArrayList to store Data
         final ArrayList<Words> phrases = new ArrayList<>();
@@ -51,10 +77,17 @@ public class PhrasesActivity extends AppCompatActivity {
         listPhrasesView.setOnItemClickListener((parent, view, position, id) -> {
             Words wordsPosition = phrases.get(position);
             releaseMediaPlayer();
-            mediaPlayer = MediaPlayer.create(PhrasesActivity.this,
-                    wordsPosition.getAudioResourceId());
-            mediaPlayer.start();
-            mediaPlayer.setOnCompletionListener(completionListener);
+
+            //request to audio Manager
+            int result = audioManager.requestAudioFocus(audioFocusChangeListener,
+                    AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
+
+            if(result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+                mediaPlayer = MediaPlayer.create(PhrasesActivity.this,
+                        wordsPosition.getAudioResourceId());
+                mediaPlayer.start();
+                mediaPlayer.setOnCompletionListener(completionListener);
+            }
         });
     }
 
@@ -68,6 +101,7 @@ public class PhrasesActivity extends AppCompatActivity {
         if(mediaPlayer != null){
             mediaPlayer.release();
             mediaPlayer = null;
+            audioManager.abandonAudioFocus(audioFocusChangeListener);   // release the audioFocus
         }
     }
 }

@@ -1,5 +1,7 @@
 package com.example.android.miwok;
 
+import android.content.Context;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -16,10 +18,34 @@ public class ColorsAcitivity extends AppCompatActivity {
         }
     };
 
+    private AudioManager audioManager;
+
+    //it is used to chane focus
+    AudioManager.OnAudioFocusChangeListener audioFocusChangeListener = new
+            AudioManager.OnAudioFocusChangeListener(){
+                @Override
+                public void onAudioFocusChange(int focusChange) {
+                    if(focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT || focusChange ==
+                            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK){
+                        //pause playback
+                        mediaPlayerColors.pause();
+                        mediaPlayerColors.seekTo(0);
+                    }
+                    else if(focusChange == AudioManager.AUDIOFOCUS_GAIN){
+                        //resume playback
+                        mediaPlayerColors.start();
+                    }
+                    else if(focusChange == AudioManager.AUDIOFOCUS_LOSS){
+                        releaseMediaPlayer();
+                    }
+                }
+            };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_numbers);
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
 
         ArrayList<Words> colors = new ArrayList<>();
 
@@ -49,11 +75,19 @@ public class ColorsAcitivity extends AppCompatActivity {
 
         listColorsView.setOnItemClickListener((parent, view, position, id) -> {
             Words colorsPosition = colors.get(position);
+            releaseMediaPlayer();
 
-            mediaPlayerColors = MediaPlayer.create(ColorsAcitivity.this,
-                    colorsPosition.getAudioResourceId());
-            mediaPlayerColors.start();
-            mediaPlayerColors.setOnCompletionListener(completionListener);
+            //request to the audioFocus
+            int result = audioManager.requestAudioFocus(audioFocusChangeListener,
+                    AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
+
+            //Check audioFocus is granted or not
+            if(result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+                mediaPlayerColors = MediaPlayer.create(ColorsAcitivity.this,
+                        colorsPosition.getAudioResourceId());
+                mediaPlayerColors.start();
+                mediaPlayerColors.setOnCompletionListener(completionListener);
+            }
         });
 
 
@@ -72,6 +106,7 @@ public class ColorsAcitivity extends AppCompatActivity {
         if(mediaPlayerColors != null){
             mediaPlayerColors.release();
             mediaPlayerColors = null;
+            audioManager.abandonAudioFocus(audioFocusChangeListener);
         }
     }
 }

@@ -1,5 +1,7 @@
 package com.example.android.miwok;
 
+import android.content.Context;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -16,7 +18,39 @@ import java.util.ArrayList;
 public class NumbersActivity extends AppCompatActivity {
     private MediaPlayer mediaPlayer;
 
-    private MediaPlayer.OnCompletionListener completionListener = new MediaPlayer.OnCompletionListener() {
+    /**
+     * AudioManger is used for shift audio when other activity going to happen
+     */
+    AudioManager audioManager;
+
+    AudioManager.OnAudioFocusChangeListener audioFocusChangeListener =
+            new AudioManager.OnAudioFocusChangeListener() {
+        @Override
+        public void onAudioFocusChange(int focusChange) {
+            if(focusChange == AudioManager.AUDIOFOCUS_GAIN_TRANSIENT ||
+                    focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK){
+                //pause playback
+                mediaPlayer.pause();
+                mediaPlayer.seekTo(0);
+            }
+            else if(focusChange == AudioManager.AUDIOFOCUS_GAIN){
+                //resume playback
+                mediaPlayer.start();
+            }
+            else if(focusChange == AudioManager.AUDIOFOCUS_LOSS){
+                //stop playback
+                releaseMediaPlayer();
+
+            }
+
+        }
+    };
+    /**
+     * setOnCompeletionListener()-> is used when we want to give a notification when it
+     *                              become finish.
+     */
+    private MediaPlayer.OnCompletionListener completionListener = new
+            MediaPlayer.OnCompletionListener() {
         @Override
         public void onCompletion(MediaPlayer mp) {
             releaseMediaPlayer();
@@ -27,6 +61,8 @@ public class NumbersActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_numbers);
+        //get service to the audio manager
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
 
         //Insert Value in ArraysList
         final ArrayList<Words> words = new ArrayList<>();
@@ -68,17 +104,23 @@ public class NumbersActivity extends AppCompatActivity {
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 Words wordPosition = words.get(position);
                 releaseMediaPlayer();
-                 mediaPlayer = MediaPlayer.create(NumbersActivity.this,
-                        wordPosition.getAudioResourceId());
-                mediaPlayer.start();
-                /**
-                 * setOnCompeletionListener()-> is used when we want to give a notification when the
-                 *                              become finish.
-                 */
-                mediaPlayer.setOnCompletionListener(completionListener);
-            }
+
+                //request to our audio manager
+                int result = audioManager.requestAudioFocus(audioFocusChangeListener,
+                        AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+                );
+                if(result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
+                    mediaPlayer = MediaPlayer.create(NumbersActivity.this,
+                            wordPosition.getAudioResourceId());
+                    mediaPlayer.start();
+
+                    mediaPlayer.setOnCompletionListener(completionListener);
+                }
+
+
         });
     }
+
 
     @Override
     protected void onStop() {
@@ -90,6 +132,7 @@ public class NumbersActivity extends AppCompatActivity {
         if(mediaPlayer != null){
             mediaPlayer.release();
             mediaPlayer = null;
+            audioManager.abandonAudioFocus(audioFocusChangeListener);  //release the audioFocus
         }
     }
 }

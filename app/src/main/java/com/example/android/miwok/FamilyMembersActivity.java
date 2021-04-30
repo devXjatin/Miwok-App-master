@@ -1,5 +1,7 @@
 package com.example.android.miwok;
 
+import android.content.Context;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -10,17 +12,42 @@ import java.util.ArrayList;
 public class FamilyMembersActivity extends AppCompatActivity {
     private MediaPlayer mediaPlayerFamily;
 
-    private MediaPlayer.OnCompletionListener completionListener = new MediaPlayer.OnCompletionListener() {
+    private MediaPlayer.OnCompletionListener completionListener = new
+            MediaPlayer.OnCompletionListener() {
         @Override
         public void onCompletion(MediaPlayer mp) {
             releaseMediaPlayer();
         }
     };
 
+    private AudioManager audioManager;
+
+    //it is used to chane focus
+    AudioManager.OnAudioFocusChangeListener audioFocusChangeListener = new
+            AudioManager.OnAudioFocusChangeListener(){
+                @Override
+                public void onAudioFocusChange(int focusChange) {
+                    if(focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT || focusChange ==
+                            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK){
+                        //pause playback
+                        mediaPlayerFamily.pause();
+                        mediaPlayerFamily.seekTo(0);
+                    }
+                    else if(focusChange == AudioManager.AUDIOFOCUS_GAIN){
+                        //resume playback
+                        mediaPlayerFamily.start();
+                    }
+                    else if(focusChange == AudioManager.AUDIOFOCUS_LOSS){
+                        releaseMediaPlayer();
+                    }
+                }
+            };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_numbers);
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
 
         //Custom ArrayList to store Data
         final ArrayList<Words> familyMembers = new ArrayList<>();
@@ -54,14 +81,23 @@ public class FamilyMembersActivity extends AppCompatActivity {
         listFamilyMembers.setOnItemClickListener((parent, view, position, id) -> {
             Words familyPosition = familyMembers.get(position);
             releaseMediaPlayer();
-            mediaPlayerFamily = MediaPlayer.create(FamilyMembersActivity.this,
-                    familyPosition.getAudioResourceId());
-            mediaPlayerFamily.start();
-            mediaPlayerFamily.setOnCompletionListener(completionListener);
+
+            int result = audioManager.requestAudioFocus(audioFocusChangeListener,
+                    AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
+
+            //Check request is granted or not
+            if(result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+
+                mediaPlayerFamily = MediaPlayer.create(FamilyMembersActivity.this,
+                        familyPosition.getAudioResourceId());
+                mediaPlayerFamily.start();
+                mediaPlayerFamily.setOnCompletionListener(completionListener);
+            }
         });
 
     }
 
+    //Stop the sound
     @Override
     protected void onStop() {
         super.onStop();
@@ -72,6 +108,7 @@ public class FamilyMembersActivity extends AppCompatActivity {
         if(mediaPlayerFamily != null){
             mediaPlayerFamily.release();
             mediaPlayerFamily = null;
+            audioManager.abandonAudioFocus(audioFocusChangeListener);
         }
     }
 
